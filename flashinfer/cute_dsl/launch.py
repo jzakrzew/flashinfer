@@ -37,7 +37,8 @@ def argument_kind(arg: object) -> object:
         return type(arg)
     size = arg.element_size()
     align = math.gcd(arg.shape[-1] * size, 16) if arg.dim() > 1 else size
-    return arg.dtype, arg.dim(), align, arg.shape[0] * arg.stride(0) >= 2**31
+    wide = bool(arg.dim() and arg.shape[0] * arg.stride(0) >= 2**31)
+    return arg.dtype, arg.dim(), align, wide
 
 
 def fake_argument(kind: object) -> object:
@@ -52,7 +53,9 @@ def fake_argument(kind: object) -> object:
     return cute.runtime.make_fake_tensor(
         CUTLASS_TYPES[dtype],
         tuple(cute.sym_int() for _ in range(rank)),
-        tuple(stride(divisibility=divisibility) for _ in range(rank - 1)) + (1,),
+        (tuple(stride(divisibility=divisibility) for _ in range(rank - 1)) + (1,))
+        if rank
+        else (),
         assumed_align=max(align, dtype.itemsize),
     )
 
